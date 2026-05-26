@@ -11,12 +11,14 @@ __pycache__/
 venv/
 env/
 
+
 # Django
 media/
 staticfiles/
 
 # Environment
 .env
+.env.example 
 
 # Frontend
 node_modules/
