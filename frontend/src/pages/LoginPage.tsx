@@ -46,28 +46,30 @@ export function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-mesh-soft px-6 py-10">
-      <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-teal-100/60 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-blue-100/70 to-transparent" />
+      <div className="absolute -left-12 top-20 h-52 w-52 rounded-full bg-blue-200/40 blur-3xl" />
+      <div className="absolute -right-12 bottom-10 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
       <div className="relative grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="panel hidden p-10 lg:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-signal">HelpDesk Portal</p>
+          <p className="text-accent text-xs font-semibold uppercase tracking-[0.26em]">HelpDesk Portal</p>
           <h1 className="mt-6 max-w-xl text-5xl font-extrabold leading-tight text-ink">
             Move from scattered ticket updates to a clean operating console.
           </h1>
-          <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">
+          <p className="text-soft mt-6 max-w-lg text-lg leading-8">
             This first frontend phase gives your team a focused entry point with JWT login,
             protected routes, and a clear view of who is signed in.
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="surface-soft rounded-3xl border p-5">
               <p className="text-sm font-semibold text-slate-900">Secure API access</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="text-soft mt-2 text-sm leading-6">
                 Tokens are stored locally and sent automatically with future requests.
               </p>
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-5">
+            <div className="surface-muted rounded-3xl border p-5">
               <p className="text-sm font-semibold text-slate-900">Role-aware views</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="text-soft mt-2 text-sm leading-6">
                 The backend keeps role restrictions in place while the UI stays simple.
               </p>
             </div>
@@ -76,11 +78,11 @@ export function LoginPage() {
 
         <section className="panel p-8 sm:p-10">
           <div className="max-w-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
+            <p className="text-muted text-xs font-semibold uppercase tracking-[0.26em]">
               Welcome back
             </p>
             <h2 className="mt-3 text-3xl font-extrabold text-ink">Sign in to HelpDesk</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <p className="text-soft mt-3 text-sm leading-6">
               Use one of the seeded demo users or your own backend account.
             </p>
           </div>
@@ -127,7 +129,7 @@ export function LoginPage() {
           </form>
 
           <div className="mt-8 rounded-3xl bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Demo login</p>
+            <p className="text-muted text-xs font-semibold uppercase tracking-[0.22em]">Demo login</p>
             <p className="mt-3 text-sm text-slate-700">
               Username: <span className="font-semibold">admin_demo</span>
             </p>

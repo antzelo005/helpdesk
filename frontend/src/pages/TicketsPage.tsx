@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { CreateTicketModal } from "../components/tickets/CreateTicketModal";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ type PriorityFilter = (typeof PRIORITY_OPTIONS)[number];
 
 export function TicketsPage() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<TicketCategory[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -83,18 +84,18 @@ export function TicketsPage() {
       <section className="panel p-8 lg:p-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-signal">Tickets</p>
+            <p className="text-accent text-xs font-semibold uppercase tracking-[0.24em]">Tickets</p>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-ink">
               Ticket operations are now wired into the live API.
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
+            <p className="text-soft mt-4 max-w-2xl text-base leading-8">
               Browse the ticket queue, narrow it by status or priority, and create new tickets
               as a client without leaving the portal.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-3xl bg-teal-50 px-5 py-4 text-sm font-medium text-teal-900">
+            <div className="surface-soft rounded-3xl border px-5 py-4 text-sm font-medium text-blue-800">
               Signed in as {currentUser?.username ?? "Unknown"} ({currentUser?.role ?? "Unknown"})
             </div>
             {currentUser?.role === "CLIENT" ? (
@@ -164,19 +165,19 @@ export function TicketsPage() {
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-                  <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
-                  <div className="mt-4 h-6 w-2/3 animate-pulse rounded bg-slate-200" />
-                  <div className="mt-6 h-20 animate-pulse rounded-2xl bg-slate-200" />
+                <div key={index} className="surface-muted rounded-3xl border p-6">
+                  <div className="h-4 w-24 animate-pulse rounded bg-blue-100" />
+                  <div className="mt-4 h-6 w-2/3 animate-pulse rounded bg-blue-100" />
+                  <div className="mt-6 h-20 animate-pulse rounded-2xl bg-slate-100" />
                 </div>
               ))}
             </div>
           ) : tickets.length ? (
             <>
-              <div className="hidden overflow-hidden rounded-3xl border border-slate-200 xl:block">
+              <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white xl:block">
                 <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50">
-                    <tr className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <thead className="bg-blue-50/70">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
                       <th className="px-6 py-4">Title</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">Priority</th>
@@ -188,7 +189,11 @@ export function TicketsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {tickets.map((ticket) => (
-                      <tr key={ticket.id} className="align-top text-sm text-slate-700">
+                      <tr
+                        key={ticket.id}
+                        className="cursor-pointer align-top text-sm text-slate-700 hover:bg-blue-50/30"
+                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                      >
                         <td className="px-6 py-5">
                           <p className="font-semibold text-slate-900">{ticket.title}</p>
                           <p className="mt-2 line-clamp-2 max-w-md text-sm leading-6 text-slate-500">
@@ -213,7 +218,11 @@ export function TicketsPage() {
 
               <div className="grid gap-4 xl:hidden">
                 {tickets.map((ticket) => (
-                  <article key={ticket.id} className="rounded-3xl border border-slate-200 bg-white p-6">
+                  <article
+                    key={ticket.id}
+                    className="cursor-pointer rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                    onClick={() => navigate(`/tickets/${ticket.id}`)}
+                  >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="text-lg font-semibold text-slate-900">{ticket.title}</p>
@@ -236,7 +245,7 @@ export function TicketsPage() {
               </div>
             </>
           ) : (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+            <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/40 p-10 text-center">
               <p className="text-lg font-semibold text-slate-900">No tickets found</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Try adjusting the filters or create a new ticket if you are signed in as a client.
@@ -273,7 +282,7 @@ function Card({ title, body }: { title: string; body: string }) {
   return (
     <article className="panel p-6">
       <p className="text-base font-semibold text-slate-900">{title}</p>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
+      <p className="text-soft mt-3 text-sm leading-7">{body}</p>
     </article>
   );
 }
@@ -317,8 +326,8 @@ function Badge({ children, tone }: { children: string; tone: string }) {
 
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{label}</dt>
+    <div className="surface-soft rounded-2xl border px-4 py-4">
+      <dt className="text-muted text-xs font-semibold uppercase tracking-[0.24em]">{label}</dt>
       <dd className="mt-2 text-sm font-medium text-slate-900">{value}</dd>
     </div>
   );
@@ -341,11 +350,11 @@ function formatDate(value: string) {
 function statusTone(status: Ticket["status"]) {
   switch (status) {
     case "OPEN":
-      return "bg-sky-100 text-sky-800";
+      return "bg-blue-100 text-blue-700";
     case "IN_PROGRESS":
-      return "bg-amber-100 text-amber-800";
+      return "bg-amber-100 text-amber-700";
     case "RESOLVED":
-      return "bg-emerald-100 text-emerald-800";
+      return "bg-emerald-100 text-emerald-700";
     case "CLOSED":
       return "bg-slate-200 text-slate-700";
     default:
@@ -356,11 +365,11 @@ function statusTone(status: Ticket["status"]) {
 function priorityTone(priority: Ticket["priority"]) {
   switch (priority) {
     case "HIGH":
-      return "bg-rose-100 text-rose-800";
+      return "bg-rose-100 text-rose-700";
     case "MEDIUM":
-      return "bg-orange-100 text-orange-800";
+      return "bg-blue-50 text-blue-700";
     case "LOW":
-      return "bg-teal-100 text-teal-800";
+      return "bg-cyan-100 text-cyan-700";
     default:
       return "bg-slate-100 text-slate-700";
   }

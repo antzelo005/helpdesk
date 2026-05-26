@@ -11,8 +11,8 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-mesh-soft px-6">
         <div className="panel w-full max-w-md p-8 text-center">
-          <div className="mx-auto h-12 w-12 animate-pulse rounded-full bg-teal-100" />
-          <p className="mt-4 text-sm font-medium text-slate-600">Loading workspace...</p>
+          <div className="mx-auto h-12 w-12 animate-pulse rounded-full bg-blue-100" />
+          <p className="text-soft mt-4 text-sm font-medium">Loading workspace...</p>
         </div>
       </div>
     );

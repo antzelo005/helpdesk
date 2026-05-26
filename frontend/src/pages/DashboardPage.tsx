@@ -44,25 +44,25 @@ export function DashboardPage() {
       <section className="panel overflow-hidden">
         <div className="grid gap-8 p-8 lg:grid-cols-[1.4fr_0.9fr] lg:p-10">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-signal">
+            <p className="text-accent text-xs font-semibold uppercase tracking-[0.24em]">
               Dashboard
             </p>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-ink">
               Current session overview
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
+            <p className="text-soft mt-4 max-w-2xl text-base leading-8">
               This page confirms JWT-authenticated access by loading the current user from
               the backend. It is the frontend checkpoint before ticket workflows are added.
             </p>
           </div>
 
-          <div className="rounded-[2rem] bg-slate-950 p-6 text-white">
-            <p className="text-xs uppercase tracking-[0.24em] text-teal-200">API status</p>
-            <p className="mt-4 text-3xl font-bold">
+          <div className="surface-soft rounded-[2rem] border p-6">
+            <p className="text-accent text-xs uppercase tracking-[0.24em]">API status</p>
+            <p className="mt-4 text-3xl font-bold text-ink">
               {profile ? "Connected" : isRefreshing ? "Loading..." : "Pending"}
             </p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Source: <span className="font-semibold text-white">GET /api/auth/me/</span>
+            <p className="text-soft mt-3 text-sm leading-6">
+              Source: <span className="font-semibold text-blue-700">GET /api/auth/me/</span>
             </p>
           </div>
         </div>
@@ -113,14 +113,14 @@ export function DashboardPage() {
 
         <article className="panel p-8">
           <p className="text-sm font-semibold text-slate-900">Frontend phase status</p>
-          <ul className="mt-5 space-y-4 text-sm text-slate-600">
-            <li className="rounded-2xl bg-slate-50 px-4 py-4">
+          <ul className="text-soft mt-5 space-y-4 text-sm">
+            <li className="surface-soft rounded-2xl border px-4 py-4">
               JWT login is wired with access and refresh token storage.
             </li>
-            <li className="rounded-2xl bg-slate-50 px-4 py-4">
+            <li className="surface-muted rounded-2xl border px-4 py-4">
               Protected routes gate the dashboard and tickets pages.
             </li>
-            <li className="rounded-2xl bg-slate-50 px-4 py-4">
+            <li className="surface-muted rounded-2xl border px-4 py-4">
               Ticket browsing and creation are intentionally deferred to the next phase.
             </li>
           </ul>
@@ -132,8 +132,8 @@ export function DashboardPage() {
 
 function InfoCard({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-      <dt className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{label}</dt>
+    <div className="surface-muted rounded-3xl border p-5">
+      <dt className="text-muted text-xs font-semibold uppercase tracking-[0.24em]">{label}</dt>
       <dd className="mt-3 text-lg font-semibold text-slate-900">{value ?? "Unavailable"}</dd>
     </div>
   );

@@ -90,15 +90,15 @@ export function CreateTicketModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/20 px-4 py-8 backdrop-blur-sm">
       <div className="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-signal">
+            <p className="text-accent text-xs font-semibold uppercase tracking-[0.24em]">
               New ticket
             </p>
             <h3 className="mt-3 text-2xl font-extrabold text-ink">Create support request</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <p className="text-soft mt-3 text-sm leading-6">
               Submit a new helpdesk ticket. If the backend accepts attachments, a file will be
               uploaded right after the ticket is created.
             </p>
@@ -201,7 +201,7 @@ export function CreateTicketModal({
             <input
               id="ticket-attachment"
               type="file"
-              className="field file:mr-4 file:rounded-xl file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800"
+              className="field file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700"
               onChange={(event) => setAttachment(event.target.files?.[0] ?? null)}
             />
           </div>

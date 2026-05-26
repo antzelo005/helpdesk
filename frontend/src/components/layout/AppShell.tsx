@@ -22,22 +22,22 @@ export function AppShell() {
         <aside className="panel flex w-full flex-col justify-between p-6 lg:w-80">
           <div>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-sm font-bold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-signal to-navy text-sm font-bold text-white shadow-lg shadow-blue-200/70">
                 HD
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
                   HelpDesk
                 </p>
                 <h1 className="text-2xl font-extrabold text-ink">Control Center</h1>
               </div>
             </div>
 
-            <div className="mt-8 rounded-3xl bg-slate-950 px-5 py-6 text-white">
-              <p className="text-xs uppercase tracking-[0.24em] text-teal-200">Signed in</p>
-              <p className="mt-3 text-lg font-semibold">{currentUser?.username ?? "Loading..."}</p>
-              <p className="text-sm text-slate-300">{currentUser?.email || "No email set"}</p>
-              <span className="mt-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-100">
+            <div className="surface-soft mt-8 rounded-3xl border px-5 py-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-accent">Signed in</p>
+              <p className="mt-3 text-lg font-semibold text-ink">{currentUser?.username ?? "Loading..."}</p>
+              <p className="text-soft text-sm">{currentUser?.email || "No email set"}</p>
+              <span className="badge-soft mt-4 bg-white text-blue-700 shadow-sm">
                 {currentUser?.role ?? "Unknown"}
               </span>
             </div>
@@ -50,9 +50,7 @@ export function AppShell() {
                   className={({ isActive }) =>
                     [
                       "flex items-center rounded-2xl px-4 py-3 text-sm font-semibold transition",
-                      isActive
-                        ? "bg-teal-50 text-signal"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                      isActive ? "nav-active" : "nav-idle",
                     ].join(" ")
                   }
                 >
@@ -67,7 +65,7 @@ export function AppShell() {
           </button>
         </aside>
 
-        <main className="flex-1">
+        <main className="min-w-0 flex-1">
           <Outlet />
         </main>
       </div>

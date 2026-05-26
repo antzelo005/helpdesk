@@ -23,6 +23,15 @@ export type TicketAttachment = {
   uploaded_by: UserSummary;
 };
 
+export type TicketComment = {
+  id: number;
+  ticket: number;
+  author: UserSummary;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Ticket = {
   id: number;
   title: string;
@@ -34,5 +43,6 @@ export type Ticket = {
   assigned_to: UserSummary | null;
   created_at: string;
   updated_at: string;
+  comments: TicketComment[];
   attachments: TicketAttachment[];
 };
