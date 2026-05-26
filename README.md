@@ -108,6 +108,87 @@ All seeded users use password `DemoPass123!`.
 
 ## Notes
 
-- Authentication currently uses DRF session/basic auth for simplicity.
+- Authentication uses JWT for API access and Django sessions for admin login.
 - Attachments are stored locally in `backend/media/`.
 - Frontend is intentionally not implemented yet.
+
+## JWT Authentication
+
+Public auth endpoints:
+
+- `POST /api/auth/token/`
+- `POST /api/auth/token/refresh/`
+- `POST /api/auth/token/verify/`
+- `GET /api/auth/me/` requires a valid JWT access token
+
+Swagger is configured for bearer tokens. Use:
+
+```text
+Bearer <access_token>
+```
+
+## Testing Steps
+
+1. Install dependencies.
+
+```powershell
+pip install -r requirements.txt
+```
+
+2. Run migrations.
+
+```powershell
+cd backend
+python manage.py migrate
+```
+
+3. Seed demo data.
+
+```powershell
+python manage.py seed_demo_data
+```
+
+4. Start the server.
+
+```powershell
+python manage.py runserver
+```
+
+5. Get a JWT token for the demo admin user.
+
+Request:
+
+```http
+POST http://127.0.0.1:8000/api/auth/token/
+Content-Type: application/json
+
+{
+  "username": "admin_demo",
+  "password": "DemoPass123!"
+}
+```
+
+Response:
+
+```json
+{
+  "refresh": "<refresh_token>",
+  "access": "<access_token>"
+}
+```
+
+6. Open Swagger at `http://127.0.0.1:8000/api/docs/swagger/`.
+
+7. Click `Authorize` and enter:
+
+```text
+Bearer <access_token>
+```
+
+8. Test:
+
+- `GET /api/auth/me/`
+- `GET /api/tickets/`
+- `GET /api/categories/`
+- `POST /api/tickets/` as `client_demo`
+- `GET /api/tickets/` as `agent_demo` to confirm only assigned tickets are visible
