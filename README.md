@@ -237,3 +237,26 @@ Expected behavior:
 - Protected routes redirect unauthenticated users to `/login`
 - Dashboard loads current user data from `GET /api/auth/me/`
 - Logout clears the stored tokens and returns to the login page
+
+### Frontend Tickets Test
+
+1. Keep the backend server running.
+2. Start the frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+3. Sign in at `http://127.0.0.1:5173/`.
+4. Open the `Tickets` page.
+5. Confirm tickets load from `GET /api/tickets/`.
+6. Use the status and priority filters to refetch the ticket list.
+7. If logged in as `client_demo`, click `Create ticket` and submit a ticket with:
+   - title
+   - description
+   - category
+   - priority
+   - optional attachment
+8. Confirm the ticket list refreshes after creation.
