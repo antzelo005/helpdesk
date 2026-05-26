@@ -1,0 +1,29 @@
+export type AuthTokens = {
+  access: string;
+  refresh: string;
+};
+
+const ACCESS_TOKEN_KEY = "helpdesk.accessToken";
+const REFRESH_TOKEN_KEY = "helpdesk.refreshToken";
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setTokens(tokens: AuthTokens): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
+}
+
+export function clearTokens(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function hasAccessToken(): boolean {
+  return Boolean(getAccessToken());
+}

@@ -110,7 +110,6 @@ All seeded users use password `DemoPass123!`.
 
 - Authentication uses JWT for API access and Django sessions for admin login.
 - Attachments are stored locally in `backend/media/`.
-- Frontend is intentionally not implemented yet.
 
 ## JWT Authentication
 
@@ -192,3 +191,49 @@ Bearer <access_token>
 - `GET /api/categories/`
 - `POST /api/tickets/` as `client_demo`
 - `GET /api/tickets/` as `agent_demo` to confirm only assigned tickets are visible
+
+## Frontend Phase 1
+
+The frontend lives in `frontend/` and uses:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Axios
+
+### Frontend Setup
+
+1. Make sure the Django backend is running at `http://127.0.0.1:8000/`.
+2. Install frontend dependencies.
+
+```powershell
+cd frontend
+npm install
+```
+
+3. Start the Vite dev server.
+
+```powershell
+npm run dev
+```
+
+4. Open the frontend at `http://127.0.0.1:5173/`.
+
+### Frontend Login Test
+
+Use the seeded admin credentials:
+
+```text
+Username: admin_demo
+Password: DemoPass123!
+```
+
+Expected behavior:
+
+- Login sends credentials to `POST /api/auth/token/`
+- Access and refresh tokens are stored in `localStorage`
+- Protected routes redirect unauthenticated users to `/login`
+- Dashboard loads current user data from `GET /api/auth/me/`
+- Logout clears the stored tokens and returns to the login page
