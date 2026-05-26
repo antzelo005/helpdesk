@@ -1,4 +1,4 @@
-from rest_framework import decorators, permissions, response, viewsets
+from rest_framework import decorators, generics, permissions, response, viewsets
 
 from .models import User
 from .serializers import UserSerializer
@@ -20,3 +20,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return response.Response(serializer.data)
+
+
+class CurrentUserView(generics.RetrieveAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
