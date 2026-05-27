@@ -1,6 +1,10 @@
 import { AxiosError } from "axios";
 import { FormEvent, useMemo, useState } from "react";
 
+import { Button } from "../ui/Button";
+import { FormField } from "../ui/FormField";
+import { TextInput, SelectInput, TextArea } from "../ui/Input";
+import { useToast } from "../../context/ToastContext";
 import { api } from "../../lib/api";
 import type { TicketCategory } from "../../lib/types";
 
@@ -31,6 +35,7 @@ export function CreateTicketModal({
   onClose,
   onCreated,
 }: CreateTicketModalProps) {
+  const { showToast } = useToast();
   const [form, setForm] = useState<TicketPayload>(defaultForm);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,7 +50,11 @@ export function CreateTicketModal({
     return null;
   }
 
-  const resetAndClose = () => {
+  const resetAndClose = (skipConfirm = false) => {
+    const isDirty = form.title || form.description || form.category_id || attachment;
+    if (!skipConfirm && isDirty && !isSubmitting && !window.confirm("Discard this ticket draft?")) {
+      return;
+    }
     setForm(defaultForm);
     setAttachment(null);
     setErrorMessage("");
@@ -77,20 +86,22 @@ export function CreateTicketModal({
       }
 
       await onCreated();
-      resetAndClose();
+      showToast("Ticket created successfully.", "success");
+      resetAndClose(true);
     } catch (error) {
       const message =
         error instanceof AxiosError && error.response?.data
           ? "Ticket creation failed. Check the form data and backend permissions."
           : "Ticket creation failed. Verify the backend is running.";
       setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/20 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
       <div className="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -104,58 +115,44 @@ export function CreateTicketModal({
             </p>
           </div>
 
-          <button type="button" className="button-secondary" onClick={resetAndClose}>
+          <Button type="button" variant="secondary" onClick={() => resetAndClose()}>
             Close
-          </button>
+          </Button>
         </div>
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="ticket-title">
-              Title
-            </label>
-            <input
+          <FormField id="ticket-title" label="Title">
+            <TextInput
               id="ticket-title"
-              className="field"
               value={form.title}
               onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
               placeholder="Describe the issue briefly"
+              disabled={isSubmitting}
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label
-              className="mb-2 block text-sm font-semibold text-slate-700"
-              htmlFor="ticket-description"
-            >
-              Description
-            </label>
-            <textarea
+          <FormField id="ticket-description" label="Description">
+            <TextArea
               id="ticket-description"
-              className="field min-h-36 resize-y"
+              className="min-h-36 resize-y"
               value={form.description}
               onChange={(event) =>
                 setForm((current) => ({ ...current, description: event.target.value }))
               }
               placeholder="Explain the issue in enough detail for support to act on it."
+              disabled={isSubmitting}
             />
-          </div>
+          </FormField>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label
-                className="mb-2 block text-sm font-semibold text-slate-700"
-                htmlFor="ticket-category"
-              >
-                Category
-              </label>
-              <select
+            <FormField id="ticket-category" label="Category">
+              <SelectInput
                 id="ticket-category"
-                className="field"
                 value={form.category_id}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, category_id: event.target.value }))
                 }
+                disabled={isSubmitting}
               >
                 <option value="">Select a category</option>
                 {categories.map((category) => (
@@ -163,19 +160,12 @@ export function CreateTicketModal({
                     {category.name}
                   </option>
                 ))}
-              </select>
-            </div>
+              </SelectInput>
+            </FormField>
 
-            <div>
-              <label
-                className="mb-2 block text-sm font-semibold text-slate-700"
-                htmlFor="ticket-priority"
-              >
-                Priority
-              </label>
-              <select
+            <FormField id="ticket-priority" label="Priority">
+              <SelectInput
                 id="ticket-priority"
-                className="field"
                 value={form.priority}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -183,17 +173,18 @@ export function CreateTicketModal({
                     priority: event.target.value as TicketPayload["priority"],
                   }))
                 }
+                disabled={isSubmitting}
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
-              </select>
-            </div>
+              </SelectInput>
+            </FormField>
           </div>
 
           <div>
             <label
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-2 block text-sm font-semibold text-ink"
               htmlFor="ticket-attachment"
             >
               Attachment (optional)
@@ -213,12 +204,12 @@ export function CreateTicketModal({
           ) : null}
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" className="button-secondary" onClick={resetAndClose}>
+            <Button type="button" variant="secondary" onClick={() => resetAndClose()}>
               Cancel
-            </button>
-            <button type="submit" className="button-primary" disabled={isDisabled}>
+            </Button>
+            <Button type="submit" disabled={isDisabled}>
               {isSubmitting ? "Creating..." : "Create ticket"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

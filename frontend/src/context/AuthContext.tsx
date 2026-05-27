@@ -31,6 +31,7 @@ type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => void;
   refreshCurrentUser: () => Promise<void>;
+  setCurrentUser: (user: CurrentUser | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       logout,
       refreshCurrentUser,
+      setCurrentUser,
     }),
     [currentUser, isAuthenticated, isBootstrapping],
   );

@@ -1,10 +1,21 @@
 import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { CreateTicketModal } from "../components/tickets/CreateTicketModal";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { InfoCard } from "../components/ui/InfoCard";
+import { Input, Select } from "../components/ui/Input";
+import { LoadingSkeleton } from "../components/ui/LoadingSkeleton";
+import { PageHeader } from "../components/ui/PageHeader";
+import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
+import { formatDateTime, formatEnum, formatRoleLabel } from "../lib/format";
 import type { Ticket, TicketCategory } from "../lib/types";
 
 const STATUS_OPTIONS = ["ALL", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
@@ -12,14 +23,24 @@ const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH"] as const;
 
 type StatusFilter = (typeof STATUS_OPTIONS)[number];
 type PriorityFilter = (typeof PRIORITY_OPTIONS)[number];
+type SortKey = "title" | "status" | "priority" | "category" | "created_by" | "assigned_to" | "created_at";
+type SortDirection = "asc" | "desc";
 
 export function TicketsPage() {
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<TicketCategory[]>([]);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(parseStatus(searchParams.get("status")));
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>(parsePriority(searchParams.get("priority")));
+  const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
+  const [sortKey, setSortKey] = useState<SortKey>(parseSortKey(searchParams.get("sort")));
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    searchParams.get("dir") === "asc" ? "asc" : "desc",
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -56,6 +77,7 @@ export function TicketsPage() {
           ? "Unable to load tickets from the API. Check that the backend is running and your token is valid."
           : "Unable to load tickets.";
       setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +91,34 @@ export function TicketsPage() {
     void loadTickets();
   }, [statusFilter, priorityFilter]);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "ALL") {
+      params.set("status", statusFilter);
+    }
+    if (priorityFilter !== "ALL") {
+      params.set("priority", priorityFilter);
+    }
+    if (searchQuery) {
+      params.set("q", searchQuery);
+    }
+    if (sortKey !== "created_at") {
+      params.set("sort", sortKey);
+    }
+    if (sortDirection !== "desc") {
+      params.set("dir", sortDirection);
+    }
+    setSearchParams(params, { replace: true });
+  }, [priorityFilter, searchQuery, setSearchParams, sortDirection, sortKey, statusFilter]);
+
   const ticketCountSummary = useMemo(() => {
     if (isLoading) {
       return "Loading tickets...";
@@ -79,37 +129,65 @@ export function TicketsPage() {
     return `${tickets.length} ticket${tickets.length === 1 ? "" : "s"} loaded`;
   }, [isLoading, tickets.length]);
 
+  const visibleTickets = useMemo(() => {
+    const normalizedQuery = searchQuery.toLowerCase();
+    const filteredTickets = normalizedQuery
+      ? tickets.filter((ticket) =>
+          [
+            ticket.title,
+            ticket.description,
+            ticket.category.name,
+            ticket.created_by.username,
+            ticket.assigned_to?.username ?? "",
+            formatEnum(ticket.status),
+            formatEnum(ticket.priority),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedQuery),
+        )
+      : tickets;
+
+    return [...filteredTickets].sort((left, right) =>
+      compareTickets(left, right, sortKey, sortDirection),
+    );
+  }, [searchQuery, sortDirection, sortKey, tickets]);
+
+  const setSort = (column: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === column) {
+        setSortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
+        return currentKey;
+      }
+
+      setSortDirection(column === "created_at" ? "desc" : "asc");
+      return column;
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <section className="panel p-8 lg:p-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-accent text-xs font-semibold uppercase tracking-[0.24em]">Tickets</p>
-            <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-ink">
-              Ticket operations are now wired into the live API.
-            </h2>
-            <p className="text-soft mt-4 max-w-2xl text-base leading-8">
-              Browse the ticket queue, narrow it by status or priority, and create new tickets
-              as a client without leaving the portal.
-            </p>
-          </div>
-
+      <PageHeader
+        eyebrow="Tickets"
+        title="Ticket operations"
+        description="Browse the ticket queue, narrow it by status or priority, and create new tickets as a client without leaving the portal."
+        aside={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="surface-soft rounded-3xl border px-5 py-4 text-sm font-medium text-blue-800">
-              Signed in as {currentUser?.username ?? "Unknown"} ({currentUser?.role ?? "Unknown"})
-            </div>
+            <Badge tone="accent">
+              {currentUser?.username ?? "Unknown"} · {formatRoleLabel(currentUser?.role ?? "CLIENT")}
+            </Badge>
             {currentUser?.role === "CLIENT" ? (
-              <button type="button" className="button-primary" onClick={() => setIsCreateOpen(true)}>
+              <Button type="button" onClick={() => setIsCreateOpen(true)}>
                 Create ticket
-              </button>
+              </Button>
             ) : null}
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Card title="Queue status" body={ticketCountSummary} />
-        <Card
+        <SummaryCard title="Queue status" body={ticketCountSummary} />
+        <SummaryCard
           title="Role scope"
           body={
             currentUser?.role === "CLIENT"
@@ -119,7 +197,7 @@ export function TicketsPage() {
                 : "Admins see the full queue and all available ticket metadata."
           }
         />
-        <Card
+        <SummaryCard
           title="Categories"
           body={
             isCategoriesLoading
@@ -129,15 +207,26 @@ export function TicketsPage() {
         />
       </section>
 
-      <section className="panel p-8">
+      <section className="panel p-6 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Ticket filters</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Narrow the list using backend-supported status and priority query parameters.
+            <p className="text-sm font-semibold text-ink">Ticket filters</p>
+            <p className="mt-1 text-sm text-soft">
+              Narrow the list using backend-supported status and priority query parameters plus client-side search and sorting.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-[minmax(14rem,1.2fr)_repeat(2,minmax(10rem,1fr))]">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-ink" htmlFor="search-tickets">
+                Search
+              </label>
+              <Input
+                id="search-tickets"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search title, description, user, or category"
+              />
+            </div>
             <FilterSelect
               id="status-filter"
               label="Status"
@@ -156,8 +245,11 @@ export function TicketsPage() {
         </div>
 
         {errorMessage ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {errorMessage}
+          <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+            <span>{errorMessage}</span>
+            <Button variant="secondary" onClick={() => void loadTickets()}>
+              Retry
+            </Button>
           </div>
         ) : null}
 
@@ -165,51 +257,51 @@ export function TicketsPage() {
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="surface-muted rounded-3xl border p-6">
-                  <div className="h-4 w-24 animate-pulse rounded bg-blue-100" />
-                  <div className="mt-4 h-6 w-2/3 animate-pulse rounded bg-blue-100" />
-                  <div className="mt-6 h-20 animate-pulse rounded-2xl bg-slate-100" />
-                </div>
+                <Card key={index} muted className="p-6">
+                  <LoadingSkeleton className="h-4 w-24" />
+                  <LoadingSkeleton className="mt-4 h-6 w-2/3" />
+                  <LoadingSkeleton className="mt-6 h-20 rounded-2xl" />
+                </Card>
               ))}
             </div>
-          ) : tickets.length ? (
+          ) : visibleTickets.length ? (
             <>
-              <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white xl:block">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-blue-50/70">
+              <div className="table-shell hidden overflow-hidden rounded-3xl border xl:block">
+                <table className="min-w-full divide-y divide-[color:var(--color-border)]">
+                  <thead className="table-head">
                     <tr className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-                      <th className="px-6 py-4">Title</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Priority</th>
-                      <th className="px-6 py-4">Category</th>
-                      <th className="px-6 py-4">Created by</th>
-                      <th className="px-6 py-4">Assigned to</th>
-                      <th className="px-6 py-4">Created</th>
+                      <SortableHeader label="Title" column="title" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Status" column="status" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Priority" column="priority" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Category" column="category" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Created by" column="created_by" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Assigned to" column="assigned_to" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
+                      <SortableHeader label="Created" column="created_at" sortKey={sortKey} sortDirection={sortDirection} onSortChange={setSort} />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {tickets.map((ticket) => (
+                  <tbody className="divide-y divide-[color:var(--color-border)] bg-[color:var(--color-surface-strong)]">
+                    {visibleTickets.map((ticket) => (
                       <tr
                         key={ticket.id}
-                        className="cursor-pointer align-top text-sm text-slate-700 hover:bg-blue-50/30"
+                        className="table-row cursor-pointer align-top text-sm transition-colors focus-within:bg-[color:var(--color-primary-soft-2)]"
                         onClick={() => navigate(`/tickets/${ticket.id}`)}
                       >
                         <td className="px-6 py-5">
-                          <p className="font-semibold text-slate-900">{ticket.title}</p>
-                          <p className="mt-2 line-clamp-2 max-w-md text-sm leading-6 text-slate-500">
+                          <p className="font-semibold text-ink">{ticket.title}</p>
+                          <p className="text-soft mt-2 line-clamp-2 max-w-md text-sm leading-6">
                             {ticket.description}
                           </p>
                         </td>
                         <td className="px-6 py-5">
-                          <Badge tone={statusTone(ticket.status)}>{formatEnum(ticket.status)}</Badge>
+                          <StatusBadge kind="status" value={ticket.status} />
                         </td>
                         <td className="px-6 py-5">
-                          <Badge tone={priorityTone(ticket.priority)}>{formatEnum(ticket.priority)}</Badge>
+                          <StatusBadge kind="priority" value={ticket.priority} />
                         </td>
                         <td className="px-6 py-5">{ticket.category.name}</td>
                         <td className="px-6 py-5">{ticket.created_by.username}</td>
                         <td className="px-6 py-5">{ticket.assigned_to?.username ?? "Unassigned"}</td>
-                        <td className="px-6 py-5">{formatDate(ticket.created_at)}</td>
+                        <td className="px-6 py-5">{formatDateTime(ticket.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -217,20 +309,20 @@ export function TicketsPage() {
               </div>
 
               <div className="grid gap-4 xl:hidden">
-                {tickets.map((ticket) => (
+                {visibleTickets.map((ticket) => (
                   <article
                     key={ticket.id}
-                    className="cursor-pointer rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                    className="cursor-pointer rounded-3xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-strong)] p-5 shadow-sm transition hover:border-[color:var(--color-border-strong)] sm:p-6"
                     onClick={() => navigate(`/tickets/${ticket.id}`)}
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-lg font-semibold text-slate-900">{ticket.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">{ticket.description}</p>
+                        <p className="text-lg font-semibold text-ink">{ticket.title}</p>
+                        <p className="text-soft mt-2 text-sm leading-6">{ticket.description}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge tone={statusTone(ticket.status)}>{formatEnum(ticket.status)}</Badge>
-                        <Badge tone={priorityTone(ticket.priority)}>{formatEnum(ticket.priority)}</Badge>
+                        <StatusBadge kind="status" value={ticket.status} />
+                        <StatusBadge kind="priority" value={ticket.priority} />
                       </div>
                     </div>
 
@@ -238,32 +330,28 @@ export function TicketsPage() {
                       <MetaItem label="Category" value={ticket.category.name} />
                       <MetaItem label="Created by" value={ticket.created_by.username} />
                       <MetaItem label="Assigned to" value={ticket.assigned_to?.username ?? "Unassigned"} />
-                      <MetaItem label="Created" value={formatDate(ticket.created_at)} />
+                      <MetaItem label="Created" value={formatDateTime(ticket.created_at)} />
                     </dl>
                   </article>
                 ))}
               </div>
             </>
           ) : (
-            <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/40 p-10 text-center">
-              <p className="text-lg font-semibold text-slate-900">No tickets found</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Try adjusting the filters or create a new ticket if you are signed in as a client.
-              </p>
-              {currentUser?.role === "CLIENT" ? (
-                <button
-                  type="button"
-                  className="button-primary mt-6"
-                  onClick={() => setIsCreateOpen(true)}
-                >
-                  Create your first ticket
-                </button>
-              ) : (
-                <Link to="/dashboard" className="button-secondary mt-6">
-                  Back to dashboard
-                </Link>
-              )}
-            </div>
+            <EmptyState
+              title="No tickets found"
+              message="Try adjusting the filters or search, or create a new ticket if you are signed in as a client."
+              action={
+                currentUser?.role === "CLIENT" ? (
+                  <Button type="button" onClick={() => setIsCreateOpen(true)}>
+                    Create your first ticket
+                  </Button>
+                ) : (
+                  <Link to="/dashboard" className="button-secondary px-5 py-3">
+                    Back to dashboard
+                  </Link>
+                )
+              }
+            />
           )}
         </div>
       </section>
@@ -278,12 +366,12 @@ export function TicketsPage() {
   );
 }
 
-function Card({ title, body }: { title: string; body: string }) {
+function SummaryCard({ title, body }: { title: string; body: string }) {
   return (
-    <article className="panel p-6">
-      <p className="text-base font-semibold text-slate-900">{title}</p>
+    <Card className="p-6">
+      <p className="text-base font-semibold text-ink">{title}</p>
       <p className="text-soft mt-3 text-sm leading-7">{body}</p>
-    </article>
+    </Card>
   );
 }
 
@@ -302,75 +390,107 @@ function FilterSelect({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor={id}>
+      <label className="mb-2 block text-sm font-semibold text-ink" htmlFor={id}>
         {label}
       </label>
-      <select id={id} className="field min-w-44" value={value} onChange={(event) => onChange(event.target.value)}>
+      <Select id={id} className="min-w-44" value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option === "ALL" ? `All ${label.toLowerCase()}` : formatEnum(option)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
-  );
-}
-
-function Badge({ children, tone }: { children: string; tone: string }) {
-  return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${tone}`}>
-      {children}
-    </span>
   );
 }
 
 function MetaItem({ label, value }: { label: string; value: string }) {
+  return <InfoCard label={label} value={value} soft className="px-4 py-4" />;
+}
+
+function SortableHeader({
+  label,
+  column,
+  sortKey,
+  sortDirection,
+  onSortChange,
+}: {
+  label: string;
+  column: SortKey;
+  sortKey: SortKey;
+  sortDirection: SortDirection;
+  onSortChange: (column: SortKey) => void;
+}) {
+  const isActive = sortKey === column;
+
   return (
-    <div className="surface-soft rounded-2xl border px-4 py-4">
-      <dt className="text-muted text-xs font-semibold uppercase tracking-[0.24em]">{label}</dt>
-      <dd className="mt-2 text-sm font-medium text-slate-900">{value}</dd>
-    </div>
+    <th className="px-6 py-4">
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 font-semibold transition-colors hover:text-blue-800"
+        onClick={() => onSortChange(column)}
+      >
+        {label}
+        <span className={isActive ? "text-blue-700" : "text-blue-300"}>
+          {isActive ? (sortDirection === "asc" ? "^" : "v") : "<>"}
+        </span>
+      </button>
+    </th>
   );
 }
 
-function formatEnum(value: string) {
-  return value
-    .split("_")
-    .map((part) => part[0] + part.slice(1).toLowerCase())
-    .join(" ");
+function compareTickets(left: Ticket, right: Ticket, sortKey: SortKey, sortDirection: SortDirection) {
+  const order = sortDirection === "asc" ? 1 : -1;
+  const leftValue = getSortValue(left, sortKey);
+  const rightValue = getSortValue(right, sortKey);
+
+  if (leftValue < rightValue) {
+    return -1 * order;
+  }
+  if (leftValue > rightValue) {
+    return 1 * order;
+  }
+  return 0;
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function statusTone(status: Ticket["status"]) {
-  switch (status) {
-    case "OPEN":
-      return "bg-blue-100 text-blue-700";
-    case "IN_PROGRESS":
-      return "bg-amber-100 text-amber-700";
-    case "RESOLVED":
-      return "bg-emerald-100 text-emerald-700";
-    case "CLOSED":
-      return "bg-slate-200 text-slate-700";
+function getSortValue(ticket: Ticket, sortKey: SortKey) {
+  switch (sortKey) {
+    case "title":
+      return ticket.title.toLowerCase();
+    case "status":
+      return formatEnum(ticket.status);
+    case "priority":
+      return formatEnum(ticket.priority);
+    case "category":
+      return ticket.category.name.toLowerCase();
+    case "created_by":
+      return ticket.created_by.username.toLowerCase();
+    case "assigned_to":
+      return ticket.assigned_to?.username.toLowerCase() ?? "";
+    case "created_at":
+      return new Date(ticket.created_at).getTime();
     default:
-      return "bg-slate-100 text-slate-700";
+      return "";
   }
 }
 
-function priorityTone(priority: Ticket["priority"]) {
-  switch (priority) {
-    case "HIGH":
-      return "bg-rose-100 text-rose-700";
-    case "MEDIUM":
-      return "bg-blue-50 text-blue-700";
-    case "LOW":
-      return "bg-cyan-100 text-cyan-700";
-    default:
-      return "bg-slate-100 text-slate-700";
-  }
+function parseStatus(value: string | null): StatusFilter {
+  return STATUS_OPTIONS.includes(value as StatusFilter) ? (value as StatusFilter) : "ALL";
+}
+
+function parsePriority(value: string | null): PriorityFilter {
+  return PRIORITY_OPTIONS.includes(value as PriorityFilter) ? (value as PriorityFilter) : "ALL";
+}
+
+function parseSortKey(value: string | null): SortKey {
+  const sortKeys: SortKey[] = [
+    "title",
+    "status",
+    "priority",
+    "category",
+    "created_by",
+    "assigned_to",
+    "created_at",
+  ];
+  return sortKeys.includes(value as SortKey) ? (value as SortKey) : "created_at";
 }

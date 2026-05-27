@@ -2,19 +2,34 @@ import { AxiosError } from "axios";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { EmptyState } from "../components/ui/EmptyState";
+import { FormField } from "../components/ui/FormField";
+import { InfoCard } from "../components/ui/InfoCard";
+import { PageHeader } from "../components/ui/PageHeader";
+import { SelectInput, TextArea } from "../components/ui/Input";
+import { LoadingSkeleton } from "../components/ui/LoadingSkeleton";
+import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
+import { formatCommentTimestamp, formatDateTime, formatEnum, formatRelativeDate, formatRoleLabel } from "../lib/format";
 import type { Ticket, TicketComment, UserSummary } from "../lib/types";
 
 const STATUS_OPTIONS: Ticket["status"][] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+type DisplayComment = TicketComment & { optimistic?: boolean };
 
 export function TicketDetailPage() {
   const { ticketId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [comments, setComments] = useState<TicketComment[]>([]);
+  const [comments, setComments] = useState<DisplayComment[]>([]);
   const [agents, setAgents] = useState<UserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -22,6 +37,8 @@ export function TicketDetailPage() {
   const [commentError, setCommentError] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isSavingTicket, setIsSavingTicket] = useState(false);
+  const [isDeletingTicket, setIsDeletingTicket] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [statusDraft, setStatusDraft] = useState<Ticket["status"]>("OPEN");
   const [assignedDraft, setAssignedDraft] = useState<string>("");
 
@@ -52,6 +69,7 @@ export function TicketDetailPage() {
           ? "Unable to load ticket details. Check the ticket access rules and backend API."
           : "Unable to load ticket details.";
       setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setIsLoading(false);
     }
@@ -86,16 +104,49 @@ export function TicketDetailPage() {
 
     setCommentError("");
     setIsSubmittingComment(true);
+    const optimisticId = -Date.now();
+    const optimisticComment: DisplayComment = {
+      id: optimisticId,
+      ticket: Number(ticketId),
+      author: currentUser
+        ? {
+            id: currentUser.id,
+            username: currentUser.username,
+            email: currentUser.email,
+            first_name: currentUser.first_name,
+            last_name: currentUser.last_name,
+            role: currentUser.role,
+          }
+        : {
+            id: 0,
+            username: "You",
+            email: "",
+            first_name: "",
+            last_name: "",
+            role: "CLIENT",
+          },
+      body: commentBody.trim(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      optimistic: true,
+    };
+
+    setComments((current) => [...current, optimisticComment]);
+    setCommentBody("");
 
     try {
       const { data } = await api.post<TicketComment>("comments/", {
         ticket_id: Number(ticketId),
-        body: commentBody.trim(),
+        body: optimisticComment.body,
       });
-      setComments((current) => [...current, data]);
-      setCommentBody("");
+      setComments((current) => current.map((comment) => (comment.id === optimisticId ? data : comment)));
+      showToast("Comment posted.", "success");
     } catch {
-      setCommentError("Unable to post the comment. Verify your access to this ticket.");
+      setComments((current) => current.filter((comment) => comment.id !== optimisticId));
+      setCommentBody(optimisticComment.body);
+      const message = "Unable to post the comment. Verify your access to this ticket.";
+      setCommentError(message);
+      showToast(message, "error");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -103,6 +154,10 @@ export function TicketDetailPage() {
 
   const handleTicketUpdate = async () => {
     if (!ticketId) {
+      return;
+    }
+
+    if (!window.confirm("Save these ticket workflow changes?")) {
       return;
     }
 
@@ -116,10 +171,33 @@ export function TicketDetailPage() {
       }
       await api.patch(`tickets/${ticketId}/`, payload);
       await loadTicket();
+      showToast("Ticket workflow updated.", "success");
     } catch {
-      setErrorMessage("Unable to save ticket updates. Check your role permissions.");
+      const message = "Unable to save ticket updates. Check your role permissions.";
+      setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setIsSavingTicket(false);
+    }
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticketId) {
+      return;
+    }
+
+    setIsDeletingTicket(true);
+    try {
+      await api.delete(`tickets/${ticketId}/`);
+      showToast("Ticket deleted.", "success");
+      navigate("/tickets", { replace: true });
+    } catch {
+      const message = "Unable to delete ticket. Check your role permissions.";
+      setErrorMessage(message);
+      showToast(message, "error");
+    } finally {
+      setIsDeletingTicket(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -136,10 +214,10 @@ export function TicketDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <section className="panel p-8 lg:p-10">
-          <div className="h-4 w-28 animate-pulse rounded bg-blue-100" />
-          <div className="mt-4 h-10 w-2/3 animate-pulse rounded bg-blue-100" />
-          <div className="mt-6 h-24 animate-pulse rounded-3xl bg-slate-100" />
+        <section className="panel p-6 sm:p-8 lg:p-10">
+          <LoadingSkeleton className="h-4 w-28" />
+          <LoadingSkeleton className="mt-4 h-10 w-2/3" />
+          <LoadingSkeleton className="mt-6 h-24 rounded-3xl" />
         </section>
       </div>
     );
@@ -147,10 +225,10 @@ export function TicketDetailPage() {
 
   if (!ticket) {
     return (
-      <section className="panel p-8 text-center">
-        <p className="text-lg font-semibold text-slate-900">Ticket unavailable</p>
+      <section className="panel p-6 text-center sm:p-8">
+        <p className="text-lg font-semibold text-ink">Ticket unavailable</p>
         <p className="text-soft mt-2 text-sm">{errorMessage || "This ticket could not be loaded."}</p>
-        <Link to="/tickets" className="button-secondary mt-6">
+        <Link to="/tickets" className="button-secondary mt-6 px-5 py-3">
           Back to tickets
         </Link>
       </section>
@@ -159,85 +237,127 @@ export function TicketDetailPage() {
 
   return (
     <div className="space-y-4">
-      <section className="panel p-8 lg:p-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate("/tickets")}
-              className="text-accent text-xs font-semibold uppercase tracking-[0.24em]"
-            >
-              Back to tickets
-            </button>
-            <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-ink">{ticket.title}</h1>
-            <p className="text-soft mt-4 max-w-3xl text-base leading-8">{ticket.description}</p>
+      <PageHeader
+        eyebrow="Ticket detail"
+        title={ticket.title}
+        description={ticket.description}
+        aside={
+          <div className="flex flex-col gap-3">
+            <Badge tone="accent">{timelineSummary}</Badge>
+            {isAdmin ? (
+              <Button variant="danger" onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeletingTicket}>
+                {isDeletingTicket ? "Deleting..." : "Delete ticket"}
+              </Button>
+            ) : null}
           </div>
-
-          <div className="surface-soft rounded-3xl border px-5 py-4 text-sm font-medium text-blue-800">
-            {timelineSummary}
-          </div>
-        </div>
-
+        }
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-6 px-0 py-0 text-accent"
+          onClick={() => navigate("/tickets")}
+        >
+          Back to tickets
+        </Button>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Badge tone={statusTone(ticket.status)}>{formatEnum(ticket.status)}</Badge>
-          <Badge tone={priorityTone(ticket.priority)}>{formatEnum(ticket.priority)}</Badge>
-          <Badge tone="bg-blue-50 text-blue-700">{ticket.category.name}</Badge>
+          <StatusBadge kind="status" value={ticket.status} />
+          <StatusBadge kind="priority" value={ticket.priority} />
+          <Badge tone="accent">{ticket.category.name}</Badge>
         </div>
-      </section>
+      </PageHeader>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {errorMessage}
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{errorMessage}</span>
+          <Button variant="secondary" onClick={() => void loadTicket()}>
+            Retry
+          </Button>
         </div>
       ) : null}
 
       <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-        <article className="panel p-8">
-          <p className="text-sm font-semibold text-slate-900">Ticket details</p>
+        <Card className="p-6 sm:p-8">
+          <p className="text-sm font-semibold text-ink">Ticket details</p>
           <dl className="mt-6 grid gap-4 sm:grid-cols-2">
             <MetaItem label="Created by" value={ticket.created_by.username} />
             <MetaItem label="Assigned to" value={ticket.assigned_to?.username ?? "Unassigned"} />
             <MetaItem label="Category" value={ticket.category.name} />
             <MetaItem label="Priority" value={formatEnum(ticket.priority)} />
-            <MetaItem label="Created at" value={formatDate(ticket.created_at)} />
-            <MetaItem label="Updated at" value={formatDate(ticket.updated_at)} />
+            <MetaItem label="Created at" value={formatDateTime(ticket.created_at)} />
+            <MetaItem label="Updated at" value={formatDateTime(ticket.updated_at)} />
           </dl>
 
-          {attachmentCount ? (
-            <div className="mt-8">
-              <p className="text-sm font-semibold text-slate-900">Attachments</p>
-              <div className="mt-4 grid gap-3">
-                {ticket.attachments.map((attachment) => (
-                  <a
-                    key={attachment.id}
-                    href={attachment.file}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="surface-soft rounded-2xl border px-4 py-4 text-sm font-medium text-blue-700 transition hover:border-blue-300"
-                  >
-                    Attachment #{attachment.id}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </article>
+          <div className="mt-8">
+            <p className="text-sm font-semibold text-ink">Attachments</p>
+            {attachmentCount ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {ticket.attachments.map((attachment) => {
+                  const isImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(attachment.file);
 
-        <article className="panel p-8">
-          <p className="text-sm font-semibold text-slate-900">Workflow controls</p>
+                  return (
+                    <Card soft key={attachment.id} className="overflow-hidden p-4">
+                      {isImage ? (
+                        <div className="overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-strong)]">
+                          <img
+                            src={attachment.file}
+                            alt={`Attachment ${attachment.id}`}
+                            className="h-44 w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-44 items-center justify-center rounded-2xl border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-surface-strong)]">
+                          <div className="text-center">
+                            <div className="mx-auto h-12 w-12 rounded-2xl border-2 border-blue-300 bg-blue-50" />
+                            <p className="mt-3 text-sm font-semibold text-ink">File preview unavailable</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-ink">Attachment #{attachment.id}</p>
+                          <p className="text-soft mt-1 text-xs">
+                            Added {formatRelativeDate(attachment.created_at)}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <a
+                            href={attachment.file}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="button-secondary px-4 py-2.5"
+                          >
+                            Preview
+                          </a>
+                          <a href={attachment.file} download className="button-primary px-4 py-2.5">
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No attachments yet" message="Files uploaded to this ticket will appear here." />
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-6 sm:p-8">
+          <p className="text-sm font-semibold text-ink">Workflow controls</p>
           <p className="text-soft mt-2 text-sm leading-6">
             Agents can update status. Admins can update status and assignment.
           </p>
 
           {canUpdateTicket ? (
             <div className="mt-6 space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="ticket-status">
-                  Status
-                </label>
-                <select
+              <FormField id="ticket-status" label="Status">
+                <SelectInput
                   id="ticket-status"
-                  className="field"
+                  disabled={isSavingTicket}
                   value={statusDraft}
                   onChange={(event) => setStatusDraft(event.target.value as Ticket["status"])}
                 >
@@ -246,17 +366,14 @@ export function TicketDetailPage() {
                       {formatEnum(status)}
                     </option>
                   ))}
-                </select>
-              </div>
+                </SelectInput>
+              </FormField>
 
               {isAdmin ? (
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="ticket-assignee">
-                    Assign to agent
-                  </label>
-                  <select
+                <FormField id="ticket-assignee" label="Assign to agent">
+                  <SelectInput
                     id="ticket-assignee"
-                    className="field"
+                    disabled={isSavingTicket}
                     value={assignedDraft}
                     onChange={(event) => setAssignedDraft(event.target.value)}
                   >
@@ -266,78 +383,85 @@ export function TicketDetailPage() {
                         {agent.username}
                       </option>
                     ))}
-                  </select>
-                </div>
+                  </SelectInput>
+                </FormField>
               ) : null}
 
-              <button type="button" className="button-primary w-full" onClick={handleTicketUpdate} disabled={isSavingTicket}>
+              <Button type="button" fullWidth onClick={handleTicketUpdate} disabled={isSavingTicket}>
                 {isSavingTicket ? "Saving..." : "Save updates"}
-              </button>
+              </Button>
+              {isSavingTicket ? (
+                <div className="space-y-3">
+                  <LoadingSkeleton className="h-3 w-28" />
+                  <LoadingSkeleton className="h-10 rounded-2xl" />
+                </div>
+              ) : null}
             </div>
           ) : (
-            <div className="surface-muted mt-6 rounded-2xl border px-4 py-4 text-sm text-slate-600">
+            <Card muted className="mt-6 px-4 py-4 text-sm text-soft">
               Your role can review this ticket, but cannot change its workflow fields.
-            </div>
+            </Card>
           )}
-        </article>
+        </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="panel p-8">
+        <Card className="p-6 sm:p-8">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-slate-900">Comments</p>
-              <p className="text-soft mt-1 text-sm">Live discussion from the comments endpoint.</p>
+              <p className="text-sm font-semibold text-ink">Comments</p>
+              <p className="text-soft mt-1 text-sm">Ticket discussion and updates.</p>
             </div>
-            <span className="badge-soft bg-blue-50 text-blue-700">
-              {comments.length} total
-            </span>
+            <Badge tone="accent">{comments.length} total</Badge>
           </div>
 
           <div className="mt-6 space-y-4">
             {comments.length ? (
               comments.map((comment) => (
-                <div key={comment.id} className="surface-muted rounded-3xl border p-5">
+                <Card key={comment.id} muted className="p-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-semibold text-slate-900">{comment.author.username}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-ink">{comment.author.username}</p>
+                        {comment.optimistic ? (
+                          <span className="badge-soft bg-blue-100 text-blue-700">Sending...</span>
+                        ) : null}
+                      </div>
                       <p className="text-muted text-xs uppercase tracking-[0.24em]">
-                        {comment.author.role}
+                        {formatRoleLabel(comment.author.role)}
                       </p>
                     </div>
-                    <p className="text-soft text-sm">{formatDate(comment.created_at)}</p>
+                    <div className="text-right">
+                      <p className="text-soft text-sm">{formatCommentTimestamp(comment.created_at)}</p>
+                      <p className="text-muted text-xs">{formatRelativeDate(comment.created_at)}</p>
+                    </div>
                   </div>
                   <p className="text-soft mt-4 text-sm leading-7">{comment.body}</p>
-                </div>
+                </Card>
               ))
             ) : (
-              <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/40 p-8 text-center">
-                <p className="font-semibold text-slate-900">No comments yet</p>
-                <p className="text-soft mt-2 text-sm">Start the discussion with the form on the right.</p>
-              </div>
+              <EmptyState title="No comments yet" message="Start the discussion with the form on the right." />
             )}
           </div>
-        </article>
+        </Card>
 
-        <article className="panel p-8">
-          <p className="text-sm font-semibold text-slate-900">Add comment</p>
+        <Card className="p-6 sm:p-8">
+          <p className="text-sm font-semibold text-ink">Add comment</p>
           <p className="text-soft mt-2 text-sm leading-6">
-            Comments are posted to the existing `/api/comments/` endpoint.
+            Add a status update, request clarification, or document the next action for this ticket.
           </p>
 
           <form className="mt-6 space-y-5" onSubmit={handleCommentSubmit}>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="ticket-comment-body">
-                Comment
-              </label>
-              <textarea
+            <FormField id="ticket-comment-body" label="Comment">
+              <TextArea
                 id="ticket-comment-body"
-                className="field min-h-40 resize-y"
+                className="min-h-40 resize-y"
                 value={commentBody}
                 onChange={(event) => setCommentBody(event.target.value)}
                 placeholder="Share an update, ask a question, or document the next action."
+                disabled={isSubmittingComment}
               />
-            </div>
+            </FormField>
 
             {commentError ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -345,67 +469,27 @@ export function TicketDetailPage() {
               </div>
             ) : null}
 
-            <button type="submit" className="button-primary w-full" disabled={isSubmittingComment || !commentBody.trim()}>
+            <Button type="submit" fullWidth disabled={isSubmittingComment || !commentBody.trim()}>
               {isSubmittingComment ? "Posting..." : "Post comment"}
-            </button>
+            </Button>
           </form>
-        </article>
+        </Card>
       </section>
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        title="Delete this ticket?"
+        message="This action permanently removes the ticket and its related workflow history from the visible queue."
+        confirmLabel="Delete ticket"
+        tone="danger"
+        isLoading={isDeletingTicket}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => void handleDeleteTicket()}
+      />
     </div>
   );
 }
 
 function MetaItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="surface-soft rounded-2xl border px-4 py-4">
-      <dt className="text-muted text-xs font-semibold uppercase tracking-[0.24em]">{label}</dt>
-      <dd className="mt-2 text-sm font-medium text-slate-900">{value}</dd>
-    </div>
-  );
-}
-
-function Badge({ children, tone }: { children: string; tone: string }) {
-  return <span className={`badge-soft ${tone}`}>{children}</span>;
-}
-
-function formatEnum(value: string) {
-  return value
-    .split("_")
-    .map((part) => part[0] + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function statusTone(status: Ticket["status"]) {
-  switch (status) {
-    case "OPEN":
-      return "bg-blue-100 text-blue-700";
-    case "IN_PROGRESS":
-      return "bg-amber-100 text-amber-700";
-    case "RESOLVED":
-      return "bg-emerald-100 text-emerald-700";
-    case "CLOSED":
-      return "bg-slate-200 text-slate-700";
-    default:
-      return "bg-slate-100 text-slate-700";
-  }
-}
-
-function priorityTone(priority: Ticket["priority"]) {
-  switch (priority) {
-    case "HIGH":
-      return "bg-rose-100 text-rose-700";
-    case "MEDIUM":
-      return "bg-blue-50 text-blue-700";
-    case "LOW":
-      return "bg-cyan-100 text-cyan-700";
-    default:
-      return "bg-slate-100 text-slate-700";
-  }
+  return <InfoCard label={label} value={value} soft className="px-4 py-4" />;
 }
