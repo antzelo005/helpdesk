@@ -1,5 +1,12 @@
 # HelpDesk App
 
+[![Django](https://img.shields.io/badge/Backend-Django%205-0C4B33?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![DRF](https://img.shields.io/badge/API-Django%20REST%20Framework-A30000?style=for-the-badge)](https://www.django-rest-framework.org/)
+[![React](https://img.shields.io/badge/Frontend-React%2018-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![JWT](https://img.shields.io/badge/Auth-JWT-111827?style=for-the-badge)](https://jwt.io/)
+
 HelpDesk App is a full-stack ticketing system built with Django REST Framework on the backend and React + TypeScript on the frontend. It supports role-based access for clients, agents, and admins, JWT authentication for the app, and a clean dashboard-driven UI for managing tickets, comments, attachments, and account settings.
 
 ## Overview
