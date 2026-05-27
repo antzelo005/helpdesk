@@ -16,19 +16,26 @@ This project includes:
 ## Screenshots
 
 Login page  
-`screenshot of context`
+<img width="1875" height="920" alt="image" src="https://github.com/user-attachments/assets/627b8cbb-a113-4a05-9347-972e7553dc81" />
+<img width="1869" height="921" alt="image" src="https://github.com/user-attachments/assets/17316369-13a9-42fd-9415-d4aff7294cca" />
 
 Dashboard  
-`screenshot of context`
+<img width="1875" height="917" alt="image" src="https://github.com/user-attachments/assets/0bc26668-e26d-420a-b431-329e875f0e64" />
+<img width="1872" height="916" alt="image" src="https://github.com/user-attachments/assets/1ea4bc40-a920-4a10-9848-d59b24fcd9cb" />
 
 Tickets page  
-`screenshot of context`
+<img width="1870" height="916" alt="image" src="https://github.com/user-attachments/assets/6dcb4952-d3a2-4a7d-b0be-9deec93a0961" />
+<img width="1864" height="914" alt="image" src="https://github.com/user-attachments/assets/6d440682-7b52-4c0c-a4a5-d5f80eb303ed" />
+
 
 Ticket detail page  
-`screenshot of context`
+<img width="1859" height="915" alt="image" src="https://github.com/user-attachments/assets/d0e40df7-47c5-4ae9-9737-68df79d2ea7d" />
+<img width="1856" height="916" alt="image" src="https://github.com/user-attachments/assets/c7a20853-d6f0-49fd-b20e-e4c94dc65862" />
 
 Settings page  
-`screenshot of context`
+<img width="1866" height="916" alt="image" src="https://github.com/user-attachments/assets/35aeba0a-8449-4d2f-941b-2c830304f81b" />
+<img width="1869" height="912" alt="image" src="https://github.com/user-attachments/assets/875ef016-d714-47eb-81e6-64789ba73058" />
+
 
 ## Core Features
 
